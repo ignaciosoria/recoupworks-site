@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23141C22'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11' fill='none' stroke='%23F27A6E' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta property="og:title" content="Recoupworks">
+<meta property="og:description" content="We check every commission statement against your orders and find the commissions your principals didn't pay.">
+<title>Recoupworks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Recoupworks checks every commission statement against your orders and finds the commissions your principals didn't pay.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: left-aligned; a light green-bar hero, then one dark "machine" band that shows statements going in, being matched line by line, and money owed coming out. Red appears only where money is found. */
+:root {
+  --bg: #F1F3EF;
+  --surface: #FFFFFF;
+  --fg: #141C22;
+  --muted: #56636B;
+  --rule: #CBD3CD;
+  --flag: #B3261E;
+  --ok: #2F7D4F;
+  --btn-bg: #141C22;
+  --btn-fg: #F6F8F5;
+  --soft: #E3E8E2;
+
+  /* the dark band where the work happens */
+  --band: #121A1F;
+  --band-card: #1A242A;
+  --band-line: #2A363D;
+  --band-fg: #E8EDE9;
+  --band-muted: #8D9A94;
+  --band-flag: #F27A6E;
+  --band-ok: #74C493;
+
+  /* the printed statement is a physical object: same look in both themes */
+  --sheet: #FDFDFA;
+  --sheet-band: #DDEBDC;
+  --sheet-ink: #2A2F33;
+  --sheet-edge: #D6DBD3;
+  --pen: #C0261C;
+
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --mono: "Courier Prime", "Courier New", Courier, monospace;
+
+  --step-1: 1.2rem;
+  --step-2: 1.6rem;
+  --step-3: clamp(1.9rem, 1.2rem + 2.4vw, 2.9rem);
+  --step-4: clamp(2.5rem, 1.4rem + 4.2vw, 4.3rem);
+  --wrap: 1200px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1417; --surface: #161D21; --fg: #E5EAE6; --muted: #98A49E; --rule: #2B353A;
+    --flag: #F0776B; --ok: #74C493; --btn-bg: #E5EAE6; --btn-fg: #0F1417; --soft: #1C2428;
+    --band: #0A0F12; --band-card: #141C21; --band-line: #253036;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1417; --surface: #161D21; --fg: #E5EAE6; --muted: #98A49E; --rule: #2B353A;
+  --flag: #F0776B; --ok: #74C493; --btn-bg: #E5EAE6; --btn-fg: #0F1417; --soft: #1C2428;
+  --band: #0A0F12; --band-card: #141C21; --band-line: #253036;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--body); font-size: 17px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap {
+  max-width: var(--wrap); margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (min-width: 720px) {
+  .wrap { padding-left: max(40px, env(safe-area-inset-left, 0px)); padding-right: max(40px, env(safe-area-inset-right, 0px)); }
+}
+h1, h2, h3 { font-family: var(--display); line-height: 1.05; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: var(--step-4); font-weight: 800; font-variation-settings: "wdth" 118; }
+h2 { font-size: var(--step-3); font-weight: 780; font-variation-settings: "wdth" 116; }
+h3 { font-size: var(--step-1); font-weight: 700; font-variation-settings: "wdth" 108; line-height: 1.2; }
+p { margin: 0; }
+a { color: inherit; }
+.label {
+  font-family: var(--display); font-size: 0.74rem; font-weight: 680; text-transform: uppercase;
+  letter-spacing: 0.12em; font-variation-settings: "wdth" 112;
+}
+.lede { font-size: var(--step-1); color: var(--muted); max-width: 34em; line-height: 1.55; }
+.lede strong { color: var(--fg); font-weight: 600; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 0.6em;
+  background: var(--btn-bg); color: var(--btn-fg); text-decoration: none;
+  font-family: var(--display); font-weight: 700; font-size: 1rem; font-variation-settings: "wdth" 110;
+  padding: 0.95em 1.4em; border-radius: 3px; border: 0; cursor: pointer;
+  transition: transform .15s ease;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn .arr { transition: transform .15s ease; }
+.btn:hover .arr { transform: translateX(3px); }
+.link {
+  font-family: var(--display); font-weight: 650; font-variation-settings: "wdth" 108;
+  text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px;
+}
+:focus-visible { outline: 2.5px solid var(--flag); outline-offset: 3px; }
+
+/* ---------- sticky header */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
+}
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 14px; }
+.mark { text-decoration: none; }
+.mark b { font-family: var(--display); font-weight: 800; font-size: 1.3rem; letter-spacing: -0.02em; font-variation-settings: "wdth" 122; }
+.mark b i { font-style: normal; color: var(--flag); }
+.top nav { display: flex; gap: 28px; align-items: center; font-size: 0.95rem; }
+.top nav a { text-decoration: none; color: var(--muted); }
+.top nav a:hover { color: var(--fg); }
+.top nav .btn { color: var(--btn-fg); padding: 0.65em 1.1em; font-size: 0.92rem; }
+@media (max-width: 760px) { .top nav a:not(.btn) { display: none; } }
+
+/* ---------- hero */
+.hero { display: grid; gap: 48px; padding-block: 48px 80px; align-items: center; }
+@media (min-width: 980px) { .hero { grid-template-columns: 1fr 1.02fr; gap: 56px; padding-block: 72px 112px; } }
+.hero-copy { display: grid; gap: 26px; min-width: 0; }
+.hero-copy .label { color: var(--muted); }
+.hero-copy h1 em { font-style: normal; color: var(--flag); }
+.cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; }
+.formats { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.86rem; color: var(--muted); }
+.chip {
+  font-family: var(--mono); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em;
+  border: 1px solid var(--rule); padding: 2px 8px; border-radius: 2px; color: var(--fg); background: var(--surface);
+}
+
+/* ---------- the statement */
+.sheet-wrap { min-width: 0; }
+.sheet {
+  position: relative; margin: 0; background: var(--sheet); color: var(--sheet-ink);
+  padding: 22px 38px 26px; border: 1px solid var(--sheet-edge);
+  box-shadow: 0 1px 0 var(--sheet-edge), 0 24px 48px -24px rgba(20, 28, 34, .4);
+  transform: rotate(-0.6deg);
+  font-family: var(--mono); font-size: 12.5px; line-height: 24px;
+}
+.sheet::before, .sheet::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 26px;
+  background: radial-gradient(circle at 13px 12px, var(--bg) 4.5px, transparent 5px) 0 0 / 26px 24px repeat-y;
+  border-right: 1px dashed var(--sheet-edge);
+}
+.sheet::before { left: 0; }
+.sheet::after { right: 0; border-right: 0; border-left: 1px dashed var(--sheet-edge); }
+.sheet-head, .sheet-sub { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sheet-head { font-weight: 700; }
+.sheet-sub { margin-bottom: 6px; }
+.scroll { overflow-x: auto; }
+.grid { min-width: 430px; }
+.row {
+  display: grid; grid-template-columns: 7.5ch minmax(0, 1fr) 10ch 6.5ch 9ch; gap: 0 1.2ch;
+  height: 24px; white-space: nowrap; position: relative; padding: 0 6px;
+}
+.row > span { overflow: hidden; text-overflow: ellipsis; }
+.row .n { text-align: right; overflow: visible; }
+.row.band { background: var(--sheet-band); }
+.row.hd { font-weight: 700; border-bottom: 1px solid var(--sheet-ink); height: 25px; }
+.row.total { font-weight: 700; border-top: 1px solid var(--sheet-ink); margin-top: 4px; }
+.row.dup::after {
+  content: ""; position: absolute; left: 2px; right: 2px; top: 50%; height: 2px;
+  background: var(--pen); transform: rotate(-0.7deg); border-radius: 2px; opacity: .9;
+}
+.ring { position: relative; overflow: visible !important; }
+.ring svg { position: absolute; left: -9px; top: -5px; width: calc(100% + 18px); height: calc(100% + 11px); overflow: visible; pointer-events: none; }
+.ring path { fill: none; stroke: var(--pen); stroke-width: 1.8; vector-effect: non-scaling-stroke; stroke-linecap: round; }
+.pen {
+  font-family: var(--display); font-variation-settings: "wdth" 78; font-weight: 650; font-size: 12.5px;
+  color: var(--pen); height: 24px; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 9ch;
+  white-space: nowrap; letter-spacing: 0.01em;
+}
+.pen.wide { padding-left: 6px; }
+.tally {
+  margin-top: 14px; border: 2px solid var(--pen); color: var(--pen); padding: 8px 12px;
+  font-family: var(--display); font-variation-settings: "wdth" 85; font-weight: 700; font-size: 14px; line-height: 1.35;
+  display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; transform: rotate(0.8deg);
+}
+.tally strong { font-size: 19px; font-variation-settings: "wdth" 100; }
+.caption { margin-top: 18px; font-size: 0.84rem; color: var(--muted); padding-left: 4px; }
+@media (max-width: 520px) { .sheet { padding: 18px 30px 22px; transform: none; } .sheet::before, .sheet::after { width: 20px; background-size: 20px 24px; background-position: -3px 0; } }
+
+/* ---------- the machine: in → check → out */
+.machine { background: var(--band); color: var(--band-fg); }
+.machine .wrap { padding-block: 104px; display: grid; gap: 56px; }
+.m-head { display: grid; gap: 16px; max-width: 40rem; }
+.m-head .label { color: var(--band-muted); }
+.m-head p { color: var(--band-muted); font-size: var(--step-1); }
+.m-head h2 em { font-style: normal; color: var(--band-flag); }
+
+.pipe { display: grid; gap: 14px; align-items: stretch; }
+@media (min-width: 1080px) { .pipe { grid-template-columns: minmax(0, 0.95fr) 40px minmax(0, 1.3fr) 40px minmax(0, 0.95fr); gap: 0; } }
+.stage { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.stage > .label { color: var(--band-muted); display: flex; align-items: center; gap: 10px; }
+.stage > .label i { font-style: normal; color: var(--band-fg); font-variation-settings: "wdth" 120; font-size: 0.9rem; }
+.card { background: var(--band-card); border: 1px solid var(--band-line); border-radius: 4px; padding: 14px 16px; min-width: 0; }
+
+.source { display: grid; grid-template-columns: 28px 1fr; gap: 2px 12px; align-items: start; }
+.source svg { width: 22px; height: 22px; stroke: var(--band-fg); fill: none; stroke-width: 1.6; margin-top: 2px; grid-row: span 2; }
+.source b { font-family: var(--display); font-variation-settings: "wdth" 108; font-weight: 700; font-size: 0.98rem; }
+.source span { color: var(--band-muted); font-size: 0.88rem; line-height: 1.45; }
+.source code { font-family: var(--mono); color: var(--band-fg); font-size: 0.86rem; overflow-wrap: anywhere; }
+.source.ref { border-style: dashed; }
+
+.arrow { display: grid; place-items: center; color: var(--band-muted); }
+.arrow svg { width: 40px; height: 22px; overflow: visible; }
+.arrow path { stroke: currentColor; stroke-width: 1.6; fill: none; stroke-dasharray: 4 5; }
+.arrow path.head { stroke-dasharray: none; }
+@media (max-width: 1079px) { .arrow svg { transform: rotate(90deg); } .arrow { padding-block: 6px; } }
+
+.match { padding: 0; overflow: hidden; position: relative; }
+.match-top { display: grid; grid-template-columns: 1fr 1.1fr 1fr; padding: 10px 16px; border-bottom: 1px solid var(--band-line); color: var(--band-muted); }
+.match-top span:nth-child(2) { text-align: center; }
+.match-top span:last-child { text-align: right; }
+.mrow { display: grid; grid-template-columns: 1fr 1.1fr 1fr; align-items: center; padding: 0 16px; height: 44px; font-family: var(--mono); font-size: 0.84rem; border-bottom: 1px solid var(--band-line); position: relative; }
+.mrow:last-of-type { border-bottom: 0; }
+.mrow .r { text-align: right; }
+.mrow .ghost { color: var(--band-muted); opacity: .55; }
+.link-ok, .link-bad { position: relative; height: 100%; display: grid; place-items: center; }
+.link-ok::before, .link-bad::before { content: ""; position: absolute; left: 4px; right: 4px; top: 50%; height: 0; border-top: 1.5px solid var(--band-line); }
+.link-bad::before { border-top: 1.5px dashed var(--band-flag); }
+.link-ok em, .link-bad em {
+  position: relative; font-style: normal; font-family: var(--display); font-variation-settings: "wdth" 85; font-weight: 700;
+  font-size: 0.74rem; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 7px; border-radius: 2px; background: var(--band-card); white-space: nowrap;
+}
+.link-ok em { color: var(--band-ok); }
+.link-bad em { color: var(--band-flag); border: 1px solid color-mix(in srgb, var(--band-flag) 55%, transparent); }
+.mrow.bad .s, .mrow.bad .r { color: var(--band-flag); }
+.scan { position: absolute; left: 0; right: 0; top: 39px; height: 44px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--band-fg) 7%, transparent) 30%, color-mix(in srgb, var(--band-fg) 7%, transparent) 70%, transparent); pointer-events: none; opacity: 0; }
+.match-foot { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--band-line); font-size: 0.86rem; color: var(--band-muted); flex-wrap: wrap; }
+.match-foot b { color: var(--band-fg); }
+@media (max-width: 480px) { .mrow { font-size: 0.74rem; padding: 0 10px; } .match-top { padding: 10px; } .link-ok em, .link-bad em { font-size: 0.66rem; padding: 2px 4px; } }
+
+.out { display: grid; gap: 12px; }
+.out-card { display: grid; gap: 10px; }
+.out-card .who { display: flex; justify-content: space-between; gap: 10px; color: var(--band-muted); font-size: 0.86rem; }
+.out-card .amt { font-family: var(--display); font-variation-settings: "wdth" 112; font-weight: 800; font-size: 1.9rem; line-height: 1; color: var(--band-flag); font-variant-numeric: tabular-nums; }
+.out-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.88rem; color: var(--band-muted); }
+.out-card li { display: flex; justify-content: space-between; gap: 10px; }
+.out-card li b { color: var(--band-fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ready { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; color: var(--band-fg); border-top: 1px solid var(--band-line); padding-top: 10px; }
+.ready svg { width: 16px; height: 16px; stroke: var(--band-ok); fill: none; stroke-width: 2; }
+.clean { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: var(--band-muted); }
+.clean b { color: var(--band-fg); font-weight: 600; }
+.clean svg { width: 16px; height: 16px; stroke: var(--band-ok); fill: none; stroke-width: 2; flex: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ring path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .55s ease-out forwards; }
+  .ring.r1 path { animation-delay: .35s; }
+  .ring.r2 path { animation-delay: .8s; }
+  .row.dup::after { transform-origin: left; animation: strike .4s ease-out .6s both; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes strike { from { transform: rotate(-0.7deg) scaleX(0); } to { transform: rotate(-0.7deg) scaleX(1); } }
+  .arrow path:not(.head) { animation: flow 1.2s linear infinite; }
+  @keyframes flow { to { stroke-dashoffset: -18; } }
+  .scan { animation: scan 6s steps(6, jump-none) infinite; }
+  @keyframes scan { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 1; transform: translateY(220px); } }
+}
+
+/* ---------- report as it arrives */
+section.block { padding-block: 104px; }
+.split { display: grid; gap: 48px; align-items: start; }
+@media (min-width: 980px) { .split { grid-template-columns: 0.8fr 1.2fr; gap: 72px; } .split .sticky { position: sticky; top: 110px; } }
+.split .sticky { display: grid; gap: 18px; }
+.mail { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; box-shadow: 0 30px 60px -40px rgba(20, 28, 34, .45); min-width: 0; overflow: hidden; }
+.mail-head { display: grid; gap: 4px; padding: 18px 22px; border-bottom: 1px solid var(--rule); font-size: 0.9rem; }
+.mail-head div { display: grid; grid-template-columns: 64px 1fr; gap: 8px; color: var(--muted); }
+.mail-head div b { color: var(--fg); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.mail-body { padding: 22px; display: grid; gap: 18px; }
+.mail-total { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+.mail-total .sum { font-family: var(--display); font-variation-settings: "wdth" 114; font-weight: 800; font-size: var(--step-3); color: var(--flag); line-height: 1; font-variant-numeric: tabular-nums; }
+.mail-total span { color: var(--muted); font-size: 0.92rem; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 0.94rem; }
+td { padding: 13px 14px 13px 0; border-top: 1px solid var(--rule); vertical-align: baseline; }
+td.inv { font-family: var(--mono); white-space: nowrap; color: var(--muted); }
+td.amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 650; padding-right: 0; }
+td.amt.owed { color: var(--flag); }
+td.amt.risk { color: var(--muted); }
+.attach { display: flex; flex-wrap: wrap; gap: 8px; }
+.attach span { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; border: 1px solid var(--rule); border-radius: 3px; padding: 6px 10px; background: var(--bg); }
+.attach svg { width: 14px; height: 14px; stroke: var(--muted); fill: none; stroke-width: 1.8; }
+.mail-note { font-size: 0.82rem; color: var(--muted); }
+
+/* ---------- terms */
+.terms { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); border-top: 1px solid var(--rule); }
+.terms li { display: grid; gap: 6px; color: var(--muted); padding: 28px 28px 28px 0; }
+.terms b { color: var(--fg); font-family: var(--display); font-variation-settings: "wdth" 114; font-weight: 780; font-size: var(--step-2); line-height: 1.1; }
+
+/* ---------- closing */
+.close { background: var(--band); color: var(--band-fg); }
+.close .wrap { padding-block: 104px; display: grid; gap: 28px; }
+.close h2 { max-width: 16em; }
+.close p { color: var(--band-muted); max-width: 36rem; font-size: var(--step-1); }
+.mailbox { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
+.mailbox .addr {
+  font-family: var(--mono); font-size: 1.15rem; padding: 0.75em 1em; border: 1.5px solid var(--band-line);
+  border-radius: 3px; user-select: all; color: var(--band-fg); text-decoration: none; min-width: 0; overflow-wrap: anywhere;
+}
+.mailbox button { background: var(--band-fg); color: var(--band); }
+footer .wrap { padding-block: 32px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 0.88rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <header class="wrap top">
+    <a class="mark" href="#top" aria-label="Recoupworks home"><b>Recoup<i>works</i></b></a>
+    <nav>
+      <a href="#how">How it works</a>
+      <a href="#report">What you get</a>
+      <a class="btn" href="#start">Free review</a>
+    </nav>
+  </header>
+</div>
+
+<main id="top">
+  <div class="wrap hero">
+    <div class="hero-copy">
+      <span class="label">Commission audits for manufacturers’ rep agencies</span>
+      <h1>Get paid for <em>every order</em> you sold.</h1>
+      <p class="lede">We check every line of every commission statement against your own order records. Wrong rates, missing invoices, double-listed lines and unexplained chargebacks come back to you as <strong>a short list with the dollar amount and the backup to claim it.</strong></p>
+      <div class="cta-row">
+        <a class="btn" href="#start">Send us one quarter. It’s free <span class="arr" aria-hidden="true">→</span></a>
+        <a class="link" href="#how">See how it works</a>
+      </div>
+      <div class="formats">Reads <span class="chip">PDF</span><span class="chip">SCAN</span><span class="chip">XLSX</span><span class="chip">CSV</span> from any principal</div>
+    </div>
+
+    <div class="sheet-wrap">
+      <figure class="sheet" aria-label="Example commission statement with discrepancies marked in red">
+        <div class="sheet-head"><span>BRENNAN INDUSTRIAL SUPPLY CO.</span><span>COMMISSION STATEMENT</span></div>
+        <div class="sheet-sub"><span>REP: YOUR AGENCY</span><span>PERIOD 03/2026 · PAGE 1 OF 1</span></div>
+        <div class="scroll">
+          <div class="grid">
+            <div class="row hd"><span>INVOICE</span><span>CUSTOMER</span><span class="n">INV AMT</span><span class="n">RATE</span><span class="n">COMM</span></div>
+            <div class="row band"><span>41107</span><span>HOLLIS MECHANICAL</span><span class="n">8,240.00</span><span class="n">5.00%</span><span class="n">412.00</span></div>
+            <div class="row band"><span>41112</span><span>TRI-COUNTY PUMP</span><span class="n">3,615.50</span><span class="n">5.00%</span><span class="n">180.78</span></div>
+            <div class="row band"><span>41120</span><span>GARNER FAB WORKS</span><span class="n">12,980.00</span><span class="n ring r1">4.00%<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M10,21 C7,8 40,3 63,4 C89,6 98,15 94,25 C90,35 58,38 36,37 C13,35 3,27 9,16 C12,10 20,7 30,6"/></svg></span><span class="n">519.20</span></div>
+            <div class="pen">↳ CONTRACT IS 5.00%: OWED 649.00, SHORT $129.80</div>
+            <div class="row"><span>41126</span><span>DELMAR HYDRAULICS</span><span class="n">2,150.00</span><span class="n">5.00%</span><span class="n">107.50</span></div>
+            <div class="row dup"><span>41126</span><span>DELMAR HYDRAULICS</span><span class="n">2,150.00</span><span class="n">5.00%</span><span class="n">107.50</span></div>
+            <div class="pen">↳ LISTED TWICE: EXPECT A $107.50 CLAWBACK</div>
+            <div class="row band"><span>41133</span><span>WESTLINE AG SUPPLY</span><span class="n">6,402.25</span><span class="n">5.00%</span><span class="n">320.11</span></div>
+            <div class="row band"><span>CM-0912</span><span>CHARGEBACK, SEE ATTACHED</span><span class="n"></span><span class="n"></span><span class="n ring r2">(240.00)<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M8,22 C6,9 38,3 62,4 C87,5 97,14 95,24 C93,34 61,38 38,37 C15,36 4,29 8,18 C11,11 19,8 28,7"/></svg></span></div>
+            <div class="pen band">↳ NO CREDIT MEMO ON FILE: ASK FOR BACKUP</div>
+            <div class="row total"><span></span><span>NET COMMISSION</span><span></span><span></span><span class="n">1,407.09</span></div>
+            <div class="pen wide">✕ MISSING: INV 41129, RIDGEWAY CONTROLS, SHIPPED 3/18, $9,870.00 → 493.50 UNPAID</div>
+          </div>
+        </div>
+        <div class="tally"><span>Owed to you this month<br><strong>$863.30</strong></span><span>Clawback to expect<br><strong>$107.50</strong></span></div>
+      </figure>
+      <p class="caption">Example statement. The principal and figures are made up; the four kinds of error are the ones we look for.</p>
+    </div>
+  </div>
+
+  <section class="machine" id="how">
+    <div class="wrap">
+      <div class="m-head">
+        <span class="label">How it works</span>
+        <h2>Statements in. <em>Money owed</em> out.</h2>
+        <p>Send statements however they reach you today. Every line gets checked against your orders, every month.</p>
+      </div>
+
+      <div class="pipe">
+        <div class="stage">
+          <span class="label"><i>In</i> Your way, no software</span>
+          <div class="card source">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3.5 6l8.5 7 8.5-7"/></svg>
+            <b>Forward them</b>
+            <span>to <code>statements@recoupworks.com</code></span>
+          </div>
+          <div class="card source">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H6a4 4 0 0 0 0 8h3M15 7h3a4 4 0 0 1 0 8h-3M8 11h8"/></svg>
+            <b>Connect your inbox</b>
+            <span>Gmail or Outlook. Statements are picked up as they arrive.</span>
+          </div>
+          <div class="card source">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5V18a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-8l-2-2.5H4a1 1 0 0 0-1 1z"/></svg>
+            <b>Share a folder</b>
+            <span>Google Drive, Dropbox or OneDrive.</span>
+          </div>
+          <div class="card source ref">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM4 9h16M4 14h16M10 4v16"/></svg>
+            <b>Plus your orders</b>
+            <span>A monthly export from QuickBooks, your ERP or a spreadsheet.</span>
+          </div>
+        </div>
+
+        <div class="arrow" aria-hidden="true"><svg viewBox="0 0 40 22"><path d="M2 11h32"/><path class="head" d="M28 5l7 6-7 6"/></svg></div>
+
+        <div class="stage">
+          <span class="label"><i>Check</i> Line by line</span>
+          <div class="card match" role="img" aria-label="Statement lines matched against your orders. Two match, four have problems.">
+            <div class="match-top label"><span>Statement</span><span>Match</span><span>Your orders</span></div>
+            <div class="scan"></div>
+            <div class="mrow"><span class="s">41107 · 412.00</span><span class="link-ok"><em>✓ match</em></span><span class="r">41107 · 412.00</span></div>
+            <div class="mrow"><span class="s">41112 · 180.78</span><span class="link-ok"><em>✓ match</em></span><span class="r">41112 · 180.78</span></div>
+            <div class="mrow bad"><span class="s">41120 · 519.20</span><span class="link-bad"><em>4% vs 5%</em></span><span class="r">41120 · 649.00</span></div>
+            <div class="mrow bad"><span class="s">41126 ×2</span><span class="link-bad"><em>listed twice</em></span><span class="r">41126 · 107.50</span></div>
+            <div class="mrow bad"><span class="s ghost">not on statement</span><span class="link-bad"><em>missing</em></span><span class="r">41129 · 493.50</span></div>
+            <div class="mrow bad"><span class="s">CM-0912 · (240.00)</span><span class="link-bad"><em>no memo</em></span><span class="r ghost">no record</span></div>
+            <div class="match-foot"><span>Brennan Industrial · March</span><span><b>31</b> lines checked · <b>4</b> to act on</span></div>
+          </div>
+        </div>
+
+        <div class="arrow" aria-hidden="true"><svg viewBox="0 0 40 22"><path d="M2 11h32"/><path class="head" d="M28 5l7 6-7 6"/></svg></div>
+
+        <div class="stage">
+          <span class="label"><i>Out</i> Every month</span>
+          <div class="card out-card">
+            <div class="who"><span>Brennan Industrial</span><span>March</span></div>
+            <div class="amt">$863.30</div>
+            <ul>
+              <li><span>Missing invoice 41129</span><b>$493.50</b></li>
+              <li><span>Chargeback, no memo</span><b>$240.00</b></li>
+              <li><span>Rate 4% vs 5%</span><b>$129.80</b></li>
+            </ul>
+            <div class="ready"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>Claim email drafted, ready to send</div>
+          </div>
+          <div class="card clean"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span><b>Apex Fluid Controls</b> · all 28 lines match</span></div>
+          <div class="card clean"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span><b>Corvex Electrical</b> · all 22 lines match</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="report">
+    <div class="wrap split">
+      <div class="sticky">
+        <span class="label" style="color:var(--muted)">What you get</span>
+        <h2>One email a month. Only what needs action.</h2>
+        <p class="lede">Lines that match stay out of your way. For each problem you get the amount, the proof and an email to send the principal.</p>
+      </div>
+      <div class="mail">
+        <div class="mail-head">
+          <div><span>From</span><b>Recoupworks</b></div>
+          <div><span>Subject</span><b>Q1 commission check: $1,219.70 to claim from 2 principals</b></div>
+        </div>
+        <div class="mail-body">
+          <div class="mail-total"><span class="sum">$1,219.70</span><span>3 principals · 214 lines checked</span></div>
+          <div class="scroll">
+            <table>
+              <tbody>
+                <tr><td>Brennan Industrial</td><td class="inv">41129</td><td>Shipped 3/18, never on a statement</td><td class="amt owed">$493.50</td></tr>
+                <tr><td>Apex Fluid Controls</td><td class="inv">7781-B</td><td>Second half of a split shipment unpaid</td><td class="amt owed">$356.40</td></tr>
+                <tr><td>Brennan Industrial</td><td class="inv">CM-0912</td><td>Chargeback with no credit memo</td><td class="amt owed">$240.00</td></tr>
+                <tr><td>Brennan Industrial</td><td class="inv">41120</td><td>Paid 4%, contract says 5%</td><td class="amt owed">$129.80</td></tr>
+                <tr><td>Corvex Electrical</td><td class="inv">41126</td><td>Listed twice, will be clawed back</td><td class="amt risk">−$107.50</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="attach">
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg>Claim email · Brennan</span>
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg>Claim email · Apex</span>
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg>Backup invoices (4)</span>
+          </div>
+          <p class="mail-note">Sample built from test statements, not a client’s data.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <ul class="terms">
+      <li><b>First review free.</b>One principal, last quarter.</li>
+      <li><b>Flat monthly fee after.</b>No setup, cancel any month.</li>
+      <li><b>NDA before any file.</b>Your principals never hear from us.</li>
+    </ul>
+  </div>
+
+  <section class="close" id="start" style="margin-top:104px">
+    <div class="wrap">
+      <h2>Pick the principal you trust least. Send us their last quarter.</h2>
+      <p>Their statements plus your order report for them. Results in 3 business days.</p>
+      <div class="mailbox">
+        <a class="addr" id="addr" href="mailto:hello@recoupworks.com?subject=Free%20commission%20review">hello@recoupworks.com</a>
+        <button class="btn" id="copy" type="button">Copy address</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span><b style="color:var(--fg)">Recoupworks</b> · Commission audits for independent manufacturers’ representatives</span>
+    <span>Ignacio Soria · hello@recoupworks.com</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var btn = document.getElementById('copy');
+  var addr = document.getElementById('addr');
+  btn.addEventListener('click', function () {
+    var text = addr.textContent.trim();
+    function done() { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy address'; }, 1800); }
+    function fallback() {
+      var r = document.createRange(); r.selectNodeContents(addr);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      btn.textContent = 'Press ⌘C to copy';
+    }
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+  });
+})();
+</script>
+</body>
+</html>
